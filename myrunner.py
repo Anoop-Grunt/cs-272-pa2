@@ -8,7 +8,7 @@ def main():
         render_mode="ansi",
     )
 
-    observation, info = env.reset(seed=2)
+    observation, info = env.reset(seed=5)
     print(env.render())
 
     for step_number in range(10):

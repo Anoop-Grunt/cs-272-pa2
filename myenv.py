@@ -13,7 +13,7 @@ from gymnasium.envs.registration import register
 
 import networkx as nx
 from phart import ASCIIRenderer, LayoutOptions, NodeStyle
-
+import re
 
 class MyEnv(gym.Env):
     """TODO: one line on what this world is and what the agent is trying to do."""
@@ -190,8 +190,17 @@ class MyEnv(gym.Env):
     
         labeled_graph = nx.relabel_nodes(graph, labels)
     
-        diagram = ASCIIRenderer(labeled_graph).render()
-    
+        options = LayoutOptions(
+            layout_strategy="kamada-kawai",
+        )
+        
+        renderer = ASCIIRenderer(
+            labeled_graph,
+            options=options,
+        )
+        
+        diagram = renderer.render()    
+
         edges = sorted(
             tuple(sorted(edge))
             for edge in graph.edges()
@@ -215,6 +224,9 @@ class MyEnv(gym.Env):
             f"Connections: {connection_text}\n"
             f"Infection probabilities: {probability_text}"
         )
+    
+
+
     def close(self):
         pass
 

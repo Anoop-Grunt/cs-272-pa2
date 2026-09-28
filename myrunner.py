@@ -1,23 +1,24 @@
 import gymnasium as gym
-import myenv  # registers your custom environment
+import myenv
 
 
 def main():
     env = gym.make(
-        "cs272/VirusSpread-v0",
+        "cs272/MyEnv-v0",
         render_mode="ansi",
     )
 
-    observation, info = env.reset(seed=0)
+    observation, info = env.reset(seed=2)
     print(env.render())
 
-    for step in range(10):
+    for step_number in range(10):
         action = env.action_space.sample()
 
         observation, reward, terminated, truncated, info = env.step(action)
 
-        print(f"\nStep {step + 1}")
-        print(f"Action: {action}, Reward: {reward}")
+        print(f"\nStep {step_number + 1}")
+        print(f"Action: {action}")
+        print(f"Reward: {reward}")
         print(env.render())
 
         if terminated or truncated:

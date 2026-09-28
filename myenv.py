@@ -11,6 +11,9 @@ import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.envs.registration import register
 
+import networkx as nx
+from phart import ASCIIRenderer, LayoutOptions, NodeStyle
+
 
 class MyEnv(gym.Env):
     """TODO: one line on what this world is and what the agent is trying to do."""
@@ -29,29 +32,13 @@ class MyEnv(gym.Env):
             raise ValueError(f"unsupported render_mode: {render_mode}")
         self.render_mode = render_mode
 
-
         self.current_person = 0
         self.infected_mask = 1
-
-        self.neighbors = {
-            0: {1, 2},
-            1: {0, 3},
-            2: {0, 3, 4},
-            3: {1, 2, 5},
-            4: {2, 5},
-            5: {3, 4},
-        }
-
-        self.infection_probability = {
-            0: 1.00,
-            1: 0.75,
-            2: 0.55,
-            3: 0.80,
-            4: 0.45,
-            5: 0.65,
-        }
-
+        self.neighbors =     None
+        self.infection_probability = None
+   
     def _get_obs(self) -> int:
+
         return self.infected_mask * 6 + self.current_person
     
     def _get_info(self) -> dict:
@@ -59,19 +46,64 @@ class MyEnv(gym.Env):
             "current_person": self.current_person,
             "infected_count": self.infected_mask.bit_count(),
         }
+    
+    def _generate_graph(self) -> dict[int, set[int]]:
+        neighbors = {
+            person: set()
+            for person in range(6)
+        }
+        def add_edge(first: int, second: int):
+            neighbors[first].add(second)
+            neighbors[second].add(first)
+    
+        # this is just a failsafe cuz the random seed  might actually disconnect components
+        # so making sure a basic ring of edges always exists, by hardcoding
+        for person in range(6):
+            add_edge(person, (person + 1) % 6)
+    
+        for first in range(6):
+            for second in range(first + 1, 6):
+                if second in neighbors[first]:
+                    continue
+    
+                if self.np_random.random() < 0.25:
+                    add_edge(first, second)
+    
+        return neighbors
+
+    def _generate_infection_probabilities(self) -> dict[int, float]:
+        probabilities = self.np_random.uniform(
+            low=0.40,
+            high=0.90,
+            size=6,
+        )
+    
+        probabilities[0] = 1.0
+    
+        return {
+            person: float(probabilities[person])
+            for person in range(6)
+        }
 
     def reset(self, seed: int | None = None, options: dict | None = None):
         # This line seeds self.np_random. Without it, seeding does not work and
         # the reproducibility test fails.
         super().reset(seed=seed)
-
         # TODO: put the world back to its starting state.
-
-
+        if self.neighbors is None:
+            self.neighbors = self._generate_graph()
+            self.infection_probability = self._generate_infection_probabilities()
+        else:
+            self._generate_graph()
+            self._generate_infection_probabilities()
+    
         self.current_person = 0
         self.infected_mask = 1
-
+    
         return self._get_obs(), self._get_info()
+    
+
+
 
     def step(self, action: int):
         # TODO: apply the action, with noise drawn from self.np_random.
@@ -112,7 +144,8 @@ class MyEnv(gym.Env):
                     reward += 5.0
                     terminated = True
             else:
-                reward = -0.10
+                reward = -1.0
+                terminated = True
     
         truncated = False
     
@@ -124,40 +157,64 @@ class MyEnv(gym.Env):
             self._get_info(),
         )
 
-
-
-
-
-
-
     def render(self):
         """Return a readable picture of the current state, as a string."""
         if self.render_mode != "ansi":
             return None
         # TODO: draw it. You need this for the sample episode in your report.
         #
-        def node(person: int) -> str:
+        if self.render_mode != "ansi":
+            return None
+    
+        graph = nx.Graph()
+        graph.add_nodes_from(range(6))
+    
+        # Add each undirected edge only once.
+        for person, neighbors in self.neighbors.items():
+            for neighbor in neighbors:
+                if person < neighbor:
+                    graph.add_edge(person, neighbor)
+    
+        def status(person: int) -> str:
             if person == self.current_person:
-                status = "V"
-            elif self.infected_mask & (1 << person):
-                status = "I"
-            else:
-                status = "H"
-            return f"[{person}:{status}]"
-        
-        return (
-                "Virus spread network:\n"
-                f"             {node(0)}\n"
-                "            /      \\\n"
-                f"         {node(1)}      {node(2)}\n"
-                "          |       /   \\\n"
-                f"          |     {node(3)}   {node(4)}\n"
-                "           \\     |     /\n"
-                f"             \\  {node(5)}  /\n"
-                f"\nCurrent person: {self.current_person}\n"
-                f"Infected count: {self.infected_mask.bit_count()}/6"
+                return "V"
+            if self.infected_mask & (1 << person):
+                return "I"
+            return "H"
+    
+        # Give each node its current display label.
+        labels = {
+            person: f"{person}:{status(person)}"
+            for person in range(6)
+        }
+    
+        labeled_graph = nx.relabel_nodes(graph, labels)
+    
+        diagram = ASCIIRenderer(labeled_graph).render()
+    
+        edges = sorted(
+            tuple(sorted(edge))
+            for edge in graph.edges()
+        )
+    
+        connection_text = ", ".join(
+            f"{first}-{second}"
+            for first, second in edges
         )
 
+
+        probability_text = ", ".join(
+            f"{person}={probability:.2f}"
+            for person, probability in sorted(self.infection_probability.items())
+        )   
+        return (
+            "Virus spread network:\n"
+            f"{diagram}\n\n"
+            f"Current person: {self.current_person}\n"
+            f"Infected count: {self.infected_mask.bit_count()}/6\n"
+            f"Connections: {connection_text}\n"
+            f"Infection probabilities: {probability_text}"
+        )
     def close(self):
         pass
 

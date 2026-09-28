@@ -22,12 +22,43 @@ class MyEnv(gym.Env):
 
         # TODO: set the two spaces. Both must be Discrete.
 
-        self.observation_space = # TODO
-        self.action_space = # TODO
+        self.observation_space = spaces.Discrete(384)
+        self.action_space = spaces.Discrete(6)
 
         if render_mode is not None and render_mode not in self.metadata["render_modes"]:
             raise ValueError(f"unsupported render_mode: {render_mode}")
         self.render_mode = render_mode
+
+
+        self.current_person = 0
+        self.infected_mask = 1
+
+        self.neighbors = {
+            0: {1, 2},
+            1: {0, 3},
+            2: {0, 3, 4},
+            3: {1, 2, 5},
+            4: {2, 5},
+            5: {3, 4},
+        }
+
+        self.infection_probability = {
+            0: 1.00,
+            1: 0.75,
+            2: 0.55,
+            3: 0.80,
+            4: 0.45,
+            5: 0.65,
+        }
+
+    def _get_obs(self) -> int:
+        return self.infected_mask * 6 + self.current_person
+    
+    def _get_info(self) -> dict:
+        return {
+            "current_person": self.current_person,
+            "infected_count": self.infected_mask.bit_count(),
+        }
 
     def reset(self, seed: int | None = None, options: dict | None = None):
         # This line seeds self.np_random. Without it, seeding does not work and
@@ -35,6 +66,10 @@ class MyEnv(gym.Env):
         super().reset(seed=seed)
 
         # TODO: put the world back to its starting state.
+
+
+        self.current_person = 0
+        self.infected_mask = 1
 
         return self._get_obs(), self._get_info()
 
@@ -46,14 +81,82 @@ class MyEnv(gym.Env):
         # wrapper from register() handle running out of time. The agent treats
         # the two differently, and so should you.
 
-        raise NotImplementedError
+        action = int(action)
+    
+        if not self.action_space.contains(action):
+            raise ValueError(f"Invalid action: {action}")
+    
+        target = action
+        reward = -0.05
+        terminated = False
+    
+        # The selected person is not directly connected.
+        if target not in self.neighbors[self.current_person]:
+            reward = -0.20
+    
+        # The target is already infected, so the virus can move there.
+        elif self.infected_mask & (1 << target):
+            self.current_person = target
+    
+        # The target is healthy, so attempt transmission.
+        else:
+            probability = self.infection_probability[target]
+    
+            if self.np_random.random() < probability:
+                self.infected_mask |= 1 << target
+                self.current_person = target
+                reward = 1.0
+    
+                # End the episode after infecting five people.
+                if self.infected_mask.bit_count() >= 5:
+                    reward += 5.0
+                    terminated = True
+            else:
+                reward = -0.10
+    
+        truncated = False
+    
+        return (
+            self._get_obs(),
+            reward,
+            terminated,
+            truncated,
+            self._get_info(),
+        )
+
+
+
+
+
+
 
     def render(self):
         """Return a readable picture of the current state, as a string."""
         if self.render_mode != "ansi":
             return None
         # TODO: draw it. You need this for the sample episode in your report.
-        raise NotImplementedError
+        #
+        def node(person: int) -> str:
+            if person == self.current_person:
+                status = "V"
+            elif self.infected_mask & (1 << person):
+                status = "I"
+            else:
+                status = "H"
+            return f"[{person}:{status}]"
+        
+        return (
+                "Virus spread network:\n"
+                f"             {node(0)}\n"
+                "            /      \\\n"
+                f"         {node(1)}      {node(2)}\n"
+                "          |       /   \\\n"
+                f"          |     {node(3)}   {node(4)}\n"
+                "           \\     |     /\n"
+                f"             \\  {node(5)}  /\n"
+                f"\nCurrent person: {self.current_person}\n"
+                f"Infected count: {self.infected_mask.bit_count()}/6"
+        )
 
     def close(self):
         pass

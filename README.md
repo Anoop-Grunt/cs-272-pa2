@@ -81,33 +81,3 @@ The main experiment uses:
 | Trace type | Accumulating |
 | Moving-average window | `100` |
 
-## Results
-
-Running `myrunner.py` creates the learning plot:
-
-`lambda_sweep.png`
-
-The results table shows:
-
-- When each λ first reaches the selected return target
-- The average return near the end of training
-- The average number of infected people near the end of training
-
-The random agent is included as a baseline.
-
-## Why Lambda Matters
-
-When λ is close to zero, the agent mostly gives credit to the most recent decision.
-
-When λ is larger, a reward can be given to earlier decisions in the same episode.
-
-This matters because the agent may need to make several good moves before it successfully spreads the virus. However, larger traces can also give credit to bad decisions, especially because infection attempts are random.
-
-## Reproducibility
-
-The environment uses Gymnasium's seeding system.
-
-The agent also has its own random-number generator.
-
-The graph, infection probabilities, action choices, and infection results can be reproduced by using the same seeds.
-

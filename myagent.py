@@ -16,6 +16,7 @@ REPLACING = "replacing"
 
 
 def argmax_action(values: np.ndarray, rng: np.random.Generator) -> int:
+    #this is just completly random tiebreaking, no logic
     largest = np.max(values)
     tied_actions = np.flatnonzero(values == largest)
     return int(rng.choice(tied_actions))
@@ -99,34 +100,28 @@ class SarsaLambdaAgent:
                 next_state, reward, terminated, truncated, info = (
                     self.env.step(action)
                 )
-
                 final_info = info
-    
                 episode_return += reward
-    
                 if terminated:
-                    # There is no next action after a terminal transition.
                     delta = reward - self.q[state, action]
                 else:
-                    # This includes truncated episodes because next_state is real.
                     next_action = self.eps_greedy(next_state)
-    
                     delta = (
                         reward
                         + self.gamma * self.q[next_state, next_action]
                         - self.q[state, action]
                     )
     
-                # Update the trace for the current state-action pair.
+                #Update the trace for the current state-action pair.
                 if self.trace == ACCUMULATING:
                     eligibility[state, action] += 1.0
                 else:
                     eligibility[state, action] = 1.0
     
-                # Update every Q-value using its eligibility.
+                #Update every Q-value using its eligibility.
                 self.q += self.alpha * delta * eligibility
     
-                # Decay traces after applying the update.
+                #Decay traces after applying the update.
                 eligibility *= self.gamma * self.lam
     
                 if terminated or truncated:

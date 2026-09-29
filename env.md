@@ -57,7 +57,7 @@ For six people, the observation space is:
 The observation is one integer encoding:
 
 1. Which people are infected
-2. The person currently carrying the virus
+2. The person currently carrying the virus (The assumption is that only this person, and not just anyone with the infection can actually infect other people)
 
 The encoding is:
 
@@ -67,13 +67,13 @@ The infected mask is a bitmask. Bit `i` is `1` when person `i` is infected and `
 
 To decode an observation:
 
-`infected_mask = observation // n_people`
+`infected_mask = observation / n_people`
 
 `current_person = observation % n_people`
 
 For example, observation `203` decodes as:
 
-- `infected_mask = 203 // 6 = 33`
+- `infected_mask = 203 / 6 = 33`
 - `current_person = 203 % 6 = 5`
 
 The number `33` is binary `100001`, meaning people `0` and `5` are infected. The current virus carrier is person `5`.
@@ -181,7 +181,7 @@ The episode terminates after three failed infection attempts.
 | Move to an already infected person | `-0.30` |
 | Successful infection | `+1.00` |
 | Failed infection attempt | `-0.75` |
-| Infecting the final person | Additional `+5.00` |
+| Infecting the final person | Additional `+3.00` |
 
 The undiscounted return is the sum of all rewards received during an episode.
 

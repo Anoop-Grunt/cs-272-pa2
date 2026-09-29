@@ -185,17 +185,18 @@ class SarsaLambdaAgent:
 
     def calc_return(self, episode: list[tuple[Any, Any, float]], discounted: bool = False) -> float:
         """Return of an episode given as [(s, a, r), ...]."""
-        if not discounted:
-            return float(sum(reward for _, _, reward in episode))
     
-        return float(
-            sum(
-                (self.gamma ** step) * reward
-                for step, (_, _, reward) in enumerate(episode)
-            )
-        )
-
-
+        total_return = 0.0
+    
+        for step, transition in enumerate(episode):
+            _, _, reward = transition
+    
+            if discounted:
+                total_return += (self.gamma ** step) * reward
+            else:
+                total_return += reward
+    
+        return float(total_return)
 class RandomAgent(SarsaLambdaAgent):
     """The baseline your agent has to beat. Already written; do not change it."""
 

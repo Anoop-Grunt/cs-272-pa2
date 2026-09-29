@@ -29,8 +29,9 @@ def argmax_action(values: np.ndarray, rng: np.random.Generator) -> int:
     Returns:
         int: an action
     """
-    raise NotImplementedError
-
+    largest = np.max(values)
+    tied_actions = np.flatnonzero(values == largest)
+    return int(rng.choice(tied_actions))
 
 class SarsaLambdaAgent:
     def __init__(
@@ -41,7 +42,7 @@ class SarsaLambdaAgent:
         eps: float = 0.1,
         lam: float = 0.9,
         trace: str = ACCUMULATING,
-        total_epi: int = 5_000,
+        total_epi: int = 5000,
         init_val: float = 1.0,
         seed: int | None = None,
     ) -> None:
@@ -81,8 +82,11 @@ class SarsaLambdaAgent:
 
     def init_qtable(self, init_val: float = 0.0) -> np.ndarray:
         """Build the q table, shape (n_states, n_actions), filled with init_val."""
-        raise NotImplementedError
-
+        return np.full(
+            (self.n_states, self.n_actions),
+            init_val,
+            dtype=float,
+        )
     def eps_greedy(self, state: int, exploration: bool = True) -> int:
         """Epsilon-greedy action selection over the current q table.
 
@@ -94,8 +98,11 @@ class SarsaLambdaAgent:
         Returns:
             int: an action
         """
-        raise NotImplementedError
-
+        if exploration and self.rng.random() < self.eps:
+            return int(self.rng.integers(self.n_actions))
+        
+        return argmax_action(self.q[state], self.rng)
+        
     def learn(self) -> list[float]:
         """Run SARSA(lambda) for self.total_epi episodes, updating self.q.
 
@@ -103,7 +110,57 @@ class SarsaLambdaAgent:
             list[float]: the undiscounted return of each training episode, in
             order. myrunner.py plots these.
         """
-        raise NotImplementedError
+        returns = []
+    
+        for _ in range(self.total_epi):
+            # Traces are reset at the start of every episode.
+            eligibility = np.zeros_like(self.q)
+    
+            state, _ = self.env.reset()
+            action = self.eps_greedy(state)
+            episode_return = 0.0
+    
+            while True:
+                next_state, reward, terminated, truncated, _ = (
+                    self.env.step(action)
+                )
+    
+                episode_return += reward
+    
+                if terminated:
+                    # There is no next action after a terminal transition.
+                    delta = reward - self.q[state, action]
+                else:
+                    # This includes truncated episodes because next_state is real.
+                    next_action = self.eps_greedy(next_state)
+    
+                    delta = (
+                        reward
+                        + self.gamma * self.q[next_state, next_action]
+                        - self.q[state, action]
+                    )
+    
+                # Update the trace for the current state-action pair.
+                if self.trace == ACCUMULATING:
+                    eligibility[state, action] += 1.0
+                else:
+                    eligibility[state, action] = 1.0
+    
+                # Update every Q-value using its eligibility.
+                self.q += self.alpha * delta * eligibility
+    
+                # Decay traces after applying the update.
+                eligibility *= self.gamma * self.lam
+    
+                if terminated or truncated:
+                    break
+    
+                state = next_state
+                action = next_action
+    
+            returns.append(episode_return)
+    
+        return returns
 
     def best_run(self, max_steps: int = 300) -> tuple[list[tuple[int, int, float]], bool]:
         """Generate one greedy episode under the learned q table, for the report.
@@ -117,11 +174,48 @@ class SarsaLambdaAgent:
                 bool: True if it reached a terminal state, False if it ran out
             ]
         """
-        raise NotImplementedError
+        episode = []
+    
+        state, _ = self.env.reset()
+    
+        for _ in range(max_steps):
+            action = self.eps_greedy(
+                state,
+                exploration=False,
+            )
+    
+            next_state, reward, terminated, truncated, _ = (
+                self.env.step(action)
+            )
+    
+            episode.append(
+                (int(state), int(action), float(reward))
+            )
+    
+            if terminated:
+                return episode, True
+    
+            if truncated:
+                return episode, False
+    
+            state = next_state
+    
+        return episode, False
+
+
+
 
     def calc_return(self, episode: list[tuple[Any, Any, float]], discounted: bool = False) -> float:
         """Return of an episode given as [(s, a, r), ...]."""
-        raise NotImplementedError
+        if not discounted:
+            return float(sum(reward for _, _, reward in episode))
+    
+        return float(
+            sum(
+                (self.gamma ** step) * reward
+                for step, (_, _, reward) in enumerate(episode)
+            )
+        )
 
 
 class RandomAgent(SarsaLambdaAgent):

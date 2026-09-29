@@ -20,14 +20,20 @@ class MyEnv(gym.Env):
 
     metadata = {"render_modes": ["ansi"], "render_fps": 4}
 
-    def __init__(self, render_mode: str | None = None):
+    def __init__(self, render_mode: str | None = None, n_people: int = 6):
         # TODO: describe your world here -- the map, the pieces, the constants.
-
         # TODO: set the two spaces. Both must be Discrete.
-
-        self.observation_space = spaces.Discrete(384)
-        self.action_space = spaces.Discrete(6)
-
+        if n_people < 3:
+            raise ValueError("n_people must be at least 3")
+        self.n_people = n_people
+        self.goal_count = n_people
+        self.observation_space = spaces.Discrete(
+            (2 ** n_people) * n_people
+        )
+        self.max_failures = 3
+        self.failure_count = 0
+        self.action_space = spaces.Discrete(n_people)
+   
         if render_mode is not None and render_mode not in self.metadata["render_modes"]:
             raise ValueError(f"unsupported render_mode: {render_mode}")
         self.render_mode = render_mode
@@ -38,8 +44,7 @@ class MyEnv(gym.Env):
         self.infection_probability = None
    
     def _get_obs(self) -> int:
-
-        return self.infected_mask * 6 + self.current_person
+        return self.infected_mask * self.n_people + self.current_person
     
     def _get_info(self) -> dict:
         return {
@@ -50,7 +55,7 @@ class MyEnv(gym.Env):
     def _generate_graph(self) -> dict[int, set[int]]:
         neighbors = {
             person: set()
-            for person in range(6)
+            for person in range(self.n_people)
         }
         def add_edge(first: int, second: int):
             neighbors[first].add(second)
@@ -58,14 +63,13 @@ class MyEnv(gym.Env):
     
         # this is just a failsafe cuz the random seed  might actually disconnect components
         # so making sure a basic ring of edges always exists, by hardcoding
-        for person in range(6):
-            add_edge(person, (person + 1) % 6)
+        for person in range(self.n_people):
+            add_edge(person, (person + 1) % self.n_people)
     
-        for first in range(6):
-            for second in range(first + 1, 6):
+        for first in range(self.n_people):
+            for second in range(first + 1, self.n_people):
                 if second in neighbors[first]:
                     continue
-    
                 if self.np_random.random() < 0.25:
                     add_edge(first, second)
     
@@ -73,16 +77,14 @@ class MyEnv(gym.Env):
 
     def _generate_infection_probabilities(self) -> dict[int, float]:
         probabilities = self.np_random.uniform(
-            low=0.40,
-            high=0.90,
-            size=6,
+            low=0.10,
+            high=0.70,
+            size=self.n_people,
         )
-    
         probabilities[0] = 1.0
-    
         return {
             person: float(probabilities[person])
-            for person in range(6)
+            for person in range(self.n_people)
         }
 
     def reset(self, seed: int | None = None, options: dict | None = None):
@@ -99,53 +101,51 @@ class MyEnv(gym.Env):
     
         self.current_person = 0
         self.infected_mask = 1
+        self.failure_count = 0
     
         return self._get_obs(), self._get_info()
     
 
 
-
     def step(self, action: int):
-        # TODO: apply the action, with noise drawn from self.np_random.
-        #
-        # Return terminated=True when the episode genuinely ends -- goal reached,
-        # agent died, game over. Leave truncated as False and let the TimeLimit
-        # wrapper from register() handle running out of time. The agent treats
-        # the two differently, and so should you.
-
         action = int(action)
     
         if not self.action_space.contains(action):
             raise ValueError(f"Invalid action: {action}")
     
         target = action
-        reward = -0.05
+        reward = -0.20
         terminated = False
     
-        # The selected person is not directly connected.
+        #Invalid/non-neighbor action
         if target not in self.neighbors[self.current_person]:
-            reward = -0.20
+            reward = -0.45
     
-        # The target is already infected, so the virus can move there.
+        #Moving to an already infected person
         elif self.infected_mask & (1 << target):
             self.current_person = target
+            reward = -0.30
     
-        # The target is healthy, so attempt transmission.
+        #Healthy target, so we can attempt infection
         else:
             probability = self.infection_probability[target]
     
+            #positive rewards if we actually succeed in infecting
             if self.np_random.random() < probability:
                 self.infected_mask |= 1 << target
                 self.current_person = target
                 reward = 1.0
     
-                # End the episode after infecting five people.
-                if self.infected_mask.bit_count() >= 5:
+                if self.infected_mask.bit_count() >= self.goal_count:
                     reward += 5.0
                     terminated = True
+    
             else:
-                reward = -1.0
-                terminated = True
+                reward = -0.75
+                self.failure_count += 1
+    
+                if self.failure_count >= self.max_failures:
+                    terminated = True
     
         truncated = False
     
@@ -156,7 +156,11 @@ class MyEnv(gym.Env):
             truncated,
             self._get_info(),
         )
-
+    
+    
+    
+    
+    
     def render(self):
         """Return a readable picture of the current state, as a string."""
         if self.render_mode != "ansi":
@@ -167,7 +171,7 @@ class MyEnv(gym.Env):
             return None
     
         graph = nx.Graph()
-        graph.add_nodes_from(range(6))
+        graph.add_nodes_from(range(self.n_people))
     
         # Add each undirected edge only once.
         for person, neighbors in self.neighbors.items():
@@ -185,7 +189,7 @@ class MyEnv(gym.Env):
         # Give each node its current display label.
         labels = {
             person: f"{person}:{status(person)}"
-            for person in range(6)
+            for person in range(self.n_people)
         }
     
         labeled_graph = nx.relabel_nodes(graph, labels)
@@ -220,12 +224,11 @@ class MyEnv(gym.Env):
             "Virus spread network:\n"
             f"{diagram}\n\n"
             f"Current person: {self.current_person}\n"
-            f"Infected count: {self.infected_mask.bit_count()}/6\n"
+            f"Infected count: {self.infected_mask.bit_count()}/{self.n_people}\n"
             f"Connections: {connection_text}\n"
             f"Infection probabilities: {probability_text}"
         )
     
-
 
     def close(self):
         pass

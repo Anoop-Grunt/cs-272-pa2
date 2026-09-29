@@ -6,7 +6,7 @@ never seen. Read the sizes off the spaces and never assume anything about what a
 state number means. Do not import myenv from this file.
 """
 
-from typing import Any
+from typing import Any, final
 
 import numpy as np
 import gymnasium as gym
@@ -16,19 +16,6 @@ REPLACING = "replacing"
 
 
 def argmax_action(values: np.ndarray, rng: np.random.Generator) -> int:
-    """Return the index of the largest value, breaking ties uniformly at random.
-
-    Ties are not an edge case here. The table starts uniform, so on the first
-    visit to a state every action is tied, and a plain np.argmax would commit
-    every state in the table to action 0.
-
-    Args:
-        values: the q-values of one state, shape (n_actions,)
-        rng: the agent's random generator
-
-    Returns:
-        int: an action
-    """
     largest = np.max(values)
     tied_actions = np.flatnonzero(values == largest)
     return int(rng.choice(tied_actions))
@@ -79,6 +66,7 @@ class SarsaLambdaAgent:
 
         self.rng = np.random.default_rng(seed)
         self.q = self.init_qtable(init_val)
+        self.final_infos: list[dict] = []
 
     def init_qtable(self, init_val: float = 0.0) -> np.ndarray:
         """Build the q table, shape (n_states, n_actions), filled with init_val."""
@@ -87,30 +75,16 @@ class SarsaLambdaAgent:
             init_val,
             dtype=float,
         )
+
     def eps_greedy(self, state: int, exploration: bool = True) -> int:
-        """Epsilon-greedy action selection over the current q table.
-
-        Args:
-            state: the current state
-            exploration: explore with probability eps if True; act greedily if
-                False. The greedy path is what best_run uses.
-
-        Returns:
-            int: an action
-        """
         if exploration and self.rng.random() < self.eps:
             return int(self.rng.integers(self.n_actions))
         
         return argmax_action(self.q[state], self.rng)
-        
-    def learn(self) -> list[float]:
-        """Run SARSA(lambda) for self.total_epi episodes, updating self.q.
 
-        Returns:
-            list[float]: the undiscounted return of each training episode, in
-            order. myrunner.py plots these.
-        """
+    def learn(self) -> list[float]:
         returns = []
+        self.final_infos = []
     
         for _ in range(self.total_epi):
             # Traces are reset at the start of every episode.
@@ -119,11 +93,14 @@ class SarsaLambdaAgent:
             state, _ = self.env.reset()
             action = self.eps_greedy(state)
             episode_return = 0.0
+            final_info = {}
     
             while True:
-                next_state, reward, terminated, truncated, _ = (
+                next_state, reward, terminated, truncated, info = (
                     self.env.step(action)
                 )
+
+                final_info = info
     
                 episode_return += reward
     
@@ -159,6 +136,7 @@ class SarsaLambdaAgent:
                 action = next_action
     
             returns.append(episode_return)
+            self.final_infos.append(final_info)
     
         return returns
 

@@ -78,7 +78,7 @@ class MyEnv(gym.Env):
     def _generate_infection_probabilities(self) -> dict[int, float]:
         probabilities = self.np_random.uniform(
             low=0.10,
-            high=0.70,
+            high=0.90,
             size=self.n_people,
         )
         probabilities[0] = 1.0
@@ -137,7 +137,7 @@ class MyEnv(gym.Env):
                 reward = 1.0
     
                 if self.infected_mask.bit_count() >= self.goal_count:
-                    reward += 5.0
+                    reward += 3.0
                     terminated = True
     
             else:
@@ -181,10 +181,10 @@ class MyEnv(gym.Env):
     
         def status(person: int) -> str:
             if person == self.current_person:
-                return "V"
+                return "VIRUS"
             if self.infected_mask & (1 << person):
-                return "I"
-            return "H"
+                return "INFECTED"
+            return "HEALTHY"
     
         # Give each node its current display label.
         labels = {

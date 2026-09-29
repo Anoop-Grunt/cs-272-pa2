@@ -1,11 +1,4 @@
-# CS272 PA2: Build a World, Then Learn It
-
-This project has two main parts:
-
-1. A custom Gymnasium environment
-2. A SARSA(λ) learning agent
-
-The environment is about a virus spreading through a social network.
+# CS272 PA2: Gymnasium - Virus Spreading through a Social Network
 
 ## Important: Python Version
 
@@ -29,7 +22,7 @@ The goal is to infect everyone in the network.
 
 The environment ID is:
 
-`cs272/MyEnv-v0`
+`cs272/Virus-v0`
 
 The full environment description is in [env.md](env.md).
 
@@ -76,7 +69,7 @@ The main experiment uses:
 
 | Setting | Value |
 |---|---:|
-| Environment | `cs272/MyEnv-v0` |
+| Environment | `cs272/Virus-v0` |
 | Number of people | `6` |
 | Episodes per run | `5000` |
 | λ values | `0.0, 0.3, 0.6, 0.9, 1.0` |
@@ -118,11 +111,3 @@ The agent also has its own random-number generator.
 
 The graph, infection probabilities, action choices, and infection results can be reproduced by using the same seeds.
 
-## Team Contributions
-
-Add a short description of what each partner worked on here.
-
-For example:
-
-- Partner 1: Environment design, graph generation, and rendering
-- Partner 2: SARSA(λ), experiments, plotting, and analysis

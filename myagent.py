@@ -197,6 +197,7 @@ class SarsaLambdaAgent:
                 total_return += reward
     
         return float(total_return)
+
 class RandomAgent(SarsaLambdaAgent):
     """The baseline your agent has to beat. Already written; do not change it."""
 

@@ -2,7 +2,7 @@ import myenv
 
 
 def run_episode(seed):
-    env = myenv.MyEnv()
+    env = myenv.Virus()
     observation, info = env.reset(seed=seed)
 
     trajectory = []

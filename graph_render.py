@@ -84,7 +84,7 @@ def draw_environment(env, save_path=None):
 
 
 def main():
-    env = gym.make("cs272/MyEnv-v0")
+    env = gym.make("cs272/Virus-v0")
 
     env.reset(seed=0)
 

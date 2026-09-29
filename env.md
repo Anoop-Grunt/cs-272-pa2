@@ -8,17 +8,17 @@ Each node represents one person. Person `0` initially carries the virus, and the
 
 The environment is registered as:
 
-`cs272/MyEnv-v0`
+`cs272/Virus-v0`
 
 It can be created with:
 
-`gym.make("cs272/MyEnv-v0")`
+`gym.make("cs272/Virus-v0")`
 
 ## Environment Arguments
 
 The constructor is:
 
-`MyEnv(render_mode=None, n_people=6)`
+`Virus(render_mode=None, n_people=6)`
 
 ### `render_mode`
 
@@ -222,7 +222,7 @@ Using the same seed and the same sequence of actions produces the same trajector
 
 The environment supports ANSI rendering:
 
-`env = gym.make("cs272/MyEnv-v0", render_mode="ansi")`
+`env = gym.make("cs272/Virus-v0", render_mode="ansi")`
 
 Calling `env.render()` returns a text representation of the social network.
 
@@ -236,8 +236,10 @@ The rendering shows:
 
 The node labels use:
 
-- `V`: current virus carrier
-- `I`: infected
-- `H`: healthy
+- `VIRUS`: current virus carrier
+- `INFECTED`: infected
+- `HEALTHY`: healthy
 
 Rendering is used for debugging and for showing a sample greedy episode in the report. It is not used by the learning agent.
+
+The rendering mode `human` is supported as well, but is mainly for reporting purposes.

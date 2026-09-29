@@ -9,8 +9,8 @@ def canonical_graph(neighbors):
 
 
 # Same seed in fresh environments should produce the same graph.
-env_a = myenv.MyEnv(render_mode="ansi")
-env_b = myenv.MyEnv(render_mode="ansi")
+env_a = myenv.Virus(render_mode="ansi")
+env_b = myenv.Virus(render_mode="ansi")
 
 env_a.reset(seed=42)
 env_b.reset(seed=42)

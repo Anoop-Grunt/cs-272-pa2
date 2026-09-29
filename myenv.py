@@ -1,12 +1,15 @@
-"""Task 1: your own custom Gymnasium environment.
+"""
+The environment is a graph of six people.
+Person 0 starts with a virus. At each step, the agent chooses a person to target.
+If the target is connected to the current person, the virus tries to infect them. The infection can succeed or fail because each person has a different infection probability.
+If the infection fails thrice, the virus dies and the episode ends.
+The episode ends if all the people in the network are infected.
+The goal is to infect everyone in the network.
 
-Design the world yourself. The requirements it has to meet are in the assignment
-readme.
-
-Delete this docstring and describe your own world instead.
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 import gymnasium as gym
 from gymnasium import spaces
 from gymnasium.envs.registration import register
@@ -15,14 +18,12 @@ import networkx as nx
 from phart import ASCIIRenderer, LayoutOptions, NodeStyle
 import re
 
-class MyEnv(gym.Env):
-    """TODO: one line on what this world is and what the agent is trying to do."""
+class Virus(gym.Env):
+    """A virus tries to spread through a social network where people have connections to other people, and varying immunity"""
 
     metadata = {"render_modes": ["ansi", "human"], "render_fps": 4}
 
     def __init__(self, render_mode: str | None = None, n_people: int = 6):
-        # TODO: describe your world here -- the map, the pieces, the constants.
-        # TODO: set the two spaces. Both must be Discrete.
         if n_people < 3:
             raise ValueError("n_people must be at least 3")
         self.n_people = n_people
@@ -165,7 +166,6 @@ class MyEnv(gym.Env):
         """Return a readable picture of the current state, as a string."""
         if self.render_mode != "ansi":
             return None
-        # TODO: draw it. You need this for the sample episode in your report.
         #
         if self.render_mode == "ansi":
             #return None
@@ -302,12 +302,8 @@ class MyEnv(gym.Env):
     def close(self):
         pass
 
-
-# TODO: name your environment. The id must start with "cs272/" and end with a
-# version, and max_episode_steps must be large enough that a competent agent can
-# finish but small enough that a lost one gives up.
 register(
-    id="cs272/MyEnv-v0",
-    entry_point="myenv:MyEnv",
+    id="cs272/Virus-v0",
+    entry_point="myenv:Virus",
     max_episode_steps=300,
 )

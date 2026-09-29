@@ -86,7 +86,7 @@ def run_lambda_sweep(
         seed_infected_counts = []
 
         for seed in seeds:
-            env = gym.make("cs272/MyEnv-v0")
+            env = gym.make("cs272/Virus-v0")
             env.reset(seed=seed)
 
             agent = SarsaLambdaAgent(
@@ -123,7 +123,7 @@ def run_random_baseline(
 ) -> np.ndarray:
     seed_returns = []
     for seed in seeds:
-        env = gym.make("cs272/MyEnv-v0")
+        env = gym.make("cs272/Virus-v0")
         env.reset(seed=seed)
 
         agent = RandomAgent(
@@ -320,7 +320,7 @@ def print_experiment_parameters(
     target_return: float,
 ) -> None:
     parameters = {
-        "environment": "cs272/MyEnv-v0",
+        "environment": "cs272/Virus-v0",
         "people": 6,
         "episodes per run": episodes,
         "lambda values": lambdas,
@@ -384,7 +384,7 @@ def show_greedy_episode(
     print(f"Truncated: {truncated}")
 
 def main():
-    lambdas = [0.0, 0.2, 0.4, 0.6, 0.8]
+    lambdas = [0.0, 0.3, 0.6, 0.9, 1.0]
     seeds = [0, 1, 2, 3, 4]
     
     sweep_results, infected_results = run_lambda_sweep(
@@ -419,7 +419,7 @@ def main():
     )
 
     greedy_episode_env = gym.make(
-        "cs272/MyEnv-v0",
+        "cs272/Virus-v0",
         render_mode="ansi",
     )
     

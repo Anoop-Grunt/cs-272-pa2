@@ -18,7 +18,7 @@ import re
 class MyEnv(gym.Env):
     """TODO: one line on what this world is and what the agent is trying to do."""
 
-    metadata = {"render_modes": ["ansi"], "render_fps": 4}
+    metadata = {"render_modes": ["ansi", "human"], "render_fps": 4}
 
     def __init__(self, render_mode: str | None = None, n_people: int = 6):
         # TODO: describe your world here -- the map, the pieces, the constants.
@@ -167,68 +167,137 @@ class MyEnv(gym.Env):
             return None
         # TODO: draw it. You need this for the sample episode in your report.
         #
-        if self.render_mode != "ansi":
+        if self.render_mode == "ansi":
+            #return None
+    
+            graph = nx.Graph()
+            graph.add_nodes_from(range(self.n_people))
+    
+            # Add each undirected edge only once.
+            for person, neighbors in self.neighbors.items():
+                for neighbor in neighbors:
+                    if person < neighbor:
+                        graph.add_edge(person, neighbor)
+    
+            def status(person: int) -> str:
+                if person == self.current_person:
+                    return "VIRUS"
+                if self.infected_mask & (1 << person):
+                    return "INFECTED"
+                return "HEALTHY"
+    
+            # Give each node its current display label.
+            labels = {
+                person: f"{person}:{status(person)}"
+                for person in range(self.n_people)
+            }
+    
+            labeled_graph = nx.relabel_nodes(graph, labels)
+    
+            options = LayoutOptions(
+                layout_strategy="kamada-kawai",
+            )
+            
+            renderer = ASCIIRenderer(
+                labeled_graph,
+                options=options,
+            )
+            
+            diagram = renderer.render()    
+
+            edges = sorted(
+                tuple(sorted(edge))
+                for edge in graph.edges()
+            )
+    
+            connection_text = ", ".join(
+                f"{first}-{second}"
+                for first, second in edges
+            )
+
+
+            probability_text = ", ".join(
+                f"{person}={probability:.2f}"
+                for person, probability in sorted(self.infection_probability.items())
+            )   
+            return (
+                "Virus spread network:\n"
+                f"{diagram}\n\n"
+                f"Current person: {self.current_person}\n"
+                f"Infected count: {self.infected_mask.bit_count()}/{self.n_people}\n"
+                f"Connections: {connection_text}\n"
+                f"Infection probabilities: {probability_text}"
+            )
+    
+        if self.render_mode == "human":
+            graph = nx.Graph()
+            graph.add_nodes_from(range(self.n_people))
+
+            for person, neighbors in self.neighbors.items():
+                for neighbor in neighbors:
+                    if person < neighbor:
+                        graph.add_edge(person, neighbor)
+
+            colors = []
+
+            for person in range(self.n_people):
+                if person == self.current_person:
+                    colors.append("gold")
+                elif self.infected_mask & (1 << person):
+                    colors.append("red")
+                else:
+                    colors.append("skyblue")
+
+            labels = {
+                person: (
+                    f"{person}\n"
+                    f"{'VIRUS' if person == self.current_person else
+                       'INFECTED' if self.infected_mask & (1 << person)
+                       else 'HEALTHY'}\n"
+                    f"p={self.infection_probability[person]:.2f}"
+                )
+                for person in range(self.n_people)
+            }
+
+            positions = nx.kamada_kawai_layout(graph)
+
+            plt.figure(figsize=(9, 7))
+
+            nx.draw_networkx_edges(
+                graph,
+                positions,
+                width=2,
+                edge_color="gray",
+            )
+
+            nx.draw_networkx_nodes(
+                graph,
+                positions,
+                node_color=colors,
+                node_size=2200,
+                edgecolors="black",
+                linewidths=1.5,
+            )
+
+            nx.draw_networkx_labels(
+                graph,
+                positions,
+                labels=labels,
+                font_size=8,
+                font_weight="bold",
+            )
+
+            plt.title(
+                f"Virus Spread Network "
+                f"({self.infected_mask.bit_count()}/{self.n_people} infected)"
+            )
+            plt.axis("off")
+            plt.tight_layout()
+            plt.show()
+
             return None
-    
-        graph = nx.Graph()
-        graph.add_nodes_from(range(self.n_people))
-    
-        # Add each undirected edge only once.
-        for person, neighbors in self.neighbors.items():
-            for neighbor in neighbors:
-                if person < neighbor:
-                    graph.add_edge(person, neighbor)
-    
-        def status(person: int) -> str:
-            if person == self.current_person:
-                return "VIRUS"
-            if self.infected_mask & (1 << person):
-                return "INFECTED"
-            return "HEALTHY"
-    
-        # Give each node its current display label.
-        labels = {
-            person: f"{person}:{status(person)}"
-            for person in range(self.n_people)
-        }
-    
-        labeled_graph = nx.relabel_nodes(graph, labels)
-    
-        options = LayoutOptions(
-            layout_strategy="kamada-kawai",
-        )
-        
-        renderer = ASCIIRenderer(
-            labeled_graph,
-            options=options,
-        )
-        
-        diagram = renderer.render()    
-
-        edges = sorted(
-            tuple(sorted(edge))
-            for edge in graph.edges()
-        )
-    
-        connection_text = ", ".join(
-            f"{first}-{second}"
-            for first, second in edges
-        )
-
-
-        probability_text = ", ".join(
-            f"{person}={probability:.2f}"
-            for person, probability in sorted(self.infection_probability.items())
-        )   
-        return (
-            "Virus spread network:\n"
-            f"{diagram}\n\n"
-            f"Current person: {self.current_person}\n"
-            f"Infected count: {self.infected_mask.bit_count()}/{self.n_people}\n"
-            f"Connections: {connection_text}\n"
-            f"Infection probabilities: {probability_text}"
-        )
-    
+            
+        return None
 
     def close(self):
         pass

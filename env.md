@@ -26,7 +26,7 @@ The supported render mode is:
 
 `"ansi"`
 
-When enabled, `env.render()` returns a text-based representation of the network.
+When enabled, `env.render(render_mode="ansi")` returns a text-based representation of the network.
 
 ### `n_people`
 
@@ -224,7 +224,7 @@ The environment supports ANSI rendering:
 
 `env = gym.make("cs272/Virus-v0", render_mode="ansi")`
 
-Calling `env.render()` returns a text representation of the social network.
+Calling `env.render(render_mode="ansi")` returns a text representation of the social network.
 
 The rendering shows:
 
